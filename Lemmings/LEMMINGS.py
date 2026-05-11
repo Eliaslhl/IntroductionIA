@@ -48,11 +48,13 @@ EtatChute  = 'EtatChute'
 EtatStop   = 'EtatStop'
 EtatDead   = 'EtatDead'
 EtatCreuse = 'EtatCreuse'
+EtatFloater = 'EtatFloater'
 
 # Définition des icônes d'aptitudes (rectangles pour la détection de clic)
 aptitudes = {
     'Creuser': pygame.Rect(191, 353, 40, 30),
     'Stopper': pygame.Rect(239, 357, 40, 30),
+    'Floater': pygame.Rect(338, 375, 40, 30),
     'Bomber': pygame.Rect(288, 359, 40, 30)
 }
 
@@ -67,10 +69,11 @@ compteur_creation = 0
 # -------- Main Program Loop -----------
 
 marche = ChargeSerieSprites(0)
-tombe  = ChargeSerieSprites(1)
-mort   = ChargeSerieSprites(2)
-stop   = ChargeSerieSprites(3)
-creuse = ChargeSerieSprites(4)
+tombe  = ChargeSerieSprites(2)
+mort   = ChargeSerieSprites(10)
+stop   = ChargeSerieSprites(4)
+creuse = ChargeSerieSprites(9)
+parachute = ChargeSerieSprites(3)
 
 # Chargement du sprite de sortie
 sortie_sprite_original = pygame.image.load(os.path.join(assets, "sortie.png"))
@@ -105,6 +108,7 @@ while not done:
       new_lemming['Decal'] = np.random.randint(0, len(marche))
       new_lemming['deadcount'] = 0
       new_lemming['creuse_timer'] = 0  # Compteur pour le creusage (toutes les 2s)
+      new_lemming['floater_active'] = False  # Le parachute est-il actif?
       lemmingsLIST.append(new_lemming)
 
     # gestion des évènements
@@ -150,6 +154,10 @@ while not done:
                         if lemming_clique['etat'] == EtatMarche:
                             lemming_clique['etat'] = EtatCreuse
                             print("Lemming creuse!")
+                    elif aptitude_selectionnee == 'Floater':
+                        # Floater : active le parachute pour ce lemming
+                        lemming_clique['floater_active'] = True
+                        print("Parachute activé!")
                 else:
                     pygame.draw.line(screen, (255,255,255),(x-5,y),(x+5,y))
                     pygame.draw.line(screen, (255,255,255),(x,y-5),(x,y+5))
@@ -174,8 +182,13 @@ while not done:
                         break
             
             if collision_detected:
+                # Si le lemming a le floater actif, il ne prend pas de dégâts
+                if onelemming['floater_active']:
+                    onelemming['etat'] = EtatMarche
+                    onelemming['floater_active'] = False  # Désactiver le floater
+                    print("Lemming atterri avec parachute!")
                 # Si le lemming a chuté d'une hauteur mortelle
-                if onelemming['fallcount'] > 160:
+                elif onelemming['fallcount'] > 160:
                     onelemming['etat'] = EtatDead
                 else:
                     onelemming['etat'] = EtatMarche
@@ -264,8 +277,13 @@ while not done:
 
     for onelemming in lemmingsLIST:
         if ( onelemming['etat'] == EtatChute ):
-            onelemming['y'] += 3
-            onelemming['fallcount'] += 3
+            # Si le floater est actif, le lemming descend lentement (1 pixel/frame)
+            if onelemming['floater_active']:
+                onelemming['y'] += 1
+                onelemming['fallcount'] += 1
+            else:
+                onelemming['y'] += 3
+                onelemming['fallcount'] += 3
         if ( onelemming['etat'] == EtatDead ):
             onelemming['deadcount'] += 1
             # Si l'animation est terminée, supprime le lemming
@@ -320,7 +338,15 @@ while not done:
         state = onelemming['etat']      
         
         if ( state == EtatChute ):
-            screen.blit(tombe[time%len(tombe)],(xx,yy))
+            # Si le floater est actif, affiche le sprite du parachute
+            if onelemming['floater_active']:
+                if len(parachute) > 0:
+                    sprite = parachute[time % len(parachute)]
+                    if onelemming['flipped']:
+                        sprite = pygame.transform.flip(sprite, True, False)
+                    screen.blit(sprite,(xx,yy))
+            else:
+                screen.blit(tombe[time%len(tombe)],(xx,yy))
         if ( state == EtatMarche ):
             decal = onelemming['Decal']
             sprite_index = (time + decal) % len(marche)
