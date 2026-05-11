@@ -47,6 +47,7 @@ EtatMarche = 'EtatMarche'
 EtatChute  = 'EtatChute'
 EtatStop   = 'EtatStop'
 EtatDead   = 'EtatDead'
+EtatCreuse = 'EtatCreuse'
 
 # Définition des icônes d'aptitudes (rectangles pour la détection de clic)
 aptitudes = {
@@ -68,6 +69,17 @@ compteur_creation = 0
 marche = ChargeSerieSprites(0)
 tombe  = ChargeSerieSprites(1)
 mort   = ChargeSerieSprites(2)
+stop   = ChargeSerieSprites(3)
+creuse = ChargeSerieSprites(4)
+
+# Chargement du sprite de sortie
+sortie_sprite_original = pygame.image.load(os.path.join(assets, "sortie.png"))
+# Redimensionner la sortie à 40x40 pixels
+sortie_sprite = pygame.transform.scale(sortie_sprite_original, (40, 40))
+
+# Position de la porte de sortie (ajustée pour être bien visible et accessible)
+sortie_x = 680
+sortie_y = 280
 
 pygame.mouse.set_visible(1)
 
@@ -79,7 +91,7 @@ while not done:
     # draw background
     screen.blit(fond,(0,0))
     
-    # creation des lemmings : 1 lemming toutes les 1,5 secondes
+    # creation des lemmings : 1 lemming toutes les 1,@  5 secondes
     if (  (compteur_creation < 15 ) and ( (time+compteur_creation) % 15 == 0) ):
       compteur_creation += 1
       new_lemming = {}
@@ -92,6 +104,7 @@ while not done:
       new_lemming['fallcount'] = 0
       new_lemming['Decal'] = np.random.randint(0, len(marche))
       new_lemming['deadcount'] = 0
+      new_lemming['creuse_timer'] = 0  # Compteur pour le creusage (toutes les 2s)
       lemmingsLIST.append(new_lemming)
 
     # gestion des évènements
@@ -116,9 +129,31 @@ while not done:
             
             # Si clic en dehors des icônes
             if not clic_sur_icone:
-                pygame.draw.line(screen, (255,255,255),(x-5,y),(x+5,y))
-                pygame.draw.line(screen, (255,255,255),(x,y-5),(x,y+5))
-                print("Click - Grid coordinates: ", x, y)
+                # Vérifier si on a cliqué sur un lemming
+                lemming_clique = None
+                for onelemming in lemmingsLIST:
+                    # Hitbox du lemming (30x30 pixels)
+                    if (onelemming['x'] <= x <= onelemming['x'] + 30 and 
+                        onelemming['y'] <= y <= onelemming['y'] + 30):
+                        lemming_clique = onelemming
+                        break
+                
+                # Appliquer l'aptitude au lemming cliqué
+                if lemming_clique:
+                    if aptitude_selectionnee == 'Stopper':
+                        # Blocker : ne fonctionne que sur les lemmings en marche
+                        if lemming_clique['etat'] == EtatMarche:
+                            lemming_clique['etat'] = EtatStop
+                            print("Lemming bloqué!")
+                    elif aptitude_selectionnee == 'Creuser':
+                        # Creuser : ne fonctionne que sur les lemmings en marche
+                        if lemming_clique['etat'] == EtatMarche:
+                            lemming_clique['etat'] = EtatCreuse
+                            print("Lemming creuse!")
+                else:
+                    pygame.draw.line(screen, (255,255,255),(x-5,y),(x+5,y))
+                    pygame.draw.line(screen, (255,255,255),(x,y-5),(x,y+5))
+                    print("Click - Grid coordinates: ", x, y)
             
     # ETAPE 1 : gestion des transitions
     for onelemming in lemmingsLIST:
@@ -188,6 +223,42 @@ while not done:
             if collision_mur:
                 onelemming['direction'] *= -1
                 onelemming['flipped'] = not onelemming['flipped']
+            
+            # Détection de collision avec un autre lemming STOP
+            for other_lemming in lemmingsLIST:
+                if other_lemming != onelemming and other_lemming['etat'] == EtatStop:
+                    # Calcule la distance entre les lemmings
+                    dx = other_lemming['x'] - onelemming['x']
+                    dy = other_lemming['y'] - onelemming['y']
+                    distance = (dx**2 + dy**2)**0.5
+                    
+                    # Si collision (distance < 30 pixels, taille du sprite)
+                    if distance < 30:
+                        # Change de direction
+                        onelemming['direction'] *= -1
+                        onelemming['flipped'] = not onelemming['flipped']
+                        break
+        
+        # Transition de Creuse vers Marche quand le sol est dégagé
+        if ( onelemming['etat'] == EtatCreuse ):
+            # Vérifier 3 points en dessous du sprite
+            points_check = [
+                (onelemming['x'] + 10, onelemming['y'] + 30),
+                (onelemming['x'] + 15, onelemming['y'] + 30),
+                (onelemming['x'] + 20, onelemming['y'] + 30)
+            ]
+            
+            no_support = True
+            for x_check, y_check in points_check:
+                if 0 <= x_check < WINDOW_SIZE[0] and 0 <= y_check < WINDOW_SIZE[1]:
+                    couleur = screen.get_at((int(x_check), int(y_check)))
+                    if couleur[:3] != (0, 0, 0):
+                        no_support = False
+                        break
+            
+            # Si le sol est dégagé, retourne à Marche
+            if no_support:
+                onelemming['etat'] = EtatMarche
 
     # ETAPE 2 : gestion des actions
 
@@ -202,8 +273,46 @@ while not done:
                 lemmingsLIST.remove(onelemming)   
         if ( onelemming['etat'] == EtatMarche ):
             onelemming['x'] += onelemming['direction'] * 3
+        if ( onelemming['etat'] == EtatCreuse ):
+            # Creuser : creuse le terrain toutes les 2 secondes (20 ticks)
+            onelemming['creuse_timer'] += 1
+            if onelemming['creuse_timer'] >= 20:
+                onelemming['creuse_timer'] = 0
+                # Creuse 20 pixels en dessous du lemming
+                for px in range(20):
+                    fond.set_at((int(onelemming['x']) + px - 10, int(onelemming['y']) + 30), (0, 0, 0))
+                # Descend le lemming après avoir creusé
+                onelemming['y'] += 1
+    
+    # Détection de collision avec la porte de sortie
+    lemmings_a_supprimer = []
+    for onelemming in lemmingsLIST:
+        # Centre du lemming
+        lemming_center_x = onelemming['x'] + LARG / 2
+        lemming_center_y = onelemming['y'] + LARG / 2
+        
+        # Centre de la porte de sortie
+        sortie_center_x = sortie_x + sortie_sprite.get_width() / 2
+        sortie_center_y = sortie_y + sortie_sprite.get_height() / 2
+        
+        # Distance entre les centres
+        dx = lemming_center_x - sortie_center_x
+        dy = lemming_center_y - sortie_center_y
+        distance = (dx**2 + dy**2)**0.5
+        
+        # Si le lemming est proche du centre de la porte (distance < 25 pixels)
+        if distance < 25:
+            lemmings_a_supprimer.append(onelemming)
+            print("Lemming sauvé!")
+    
+    # Supprimer les lemmings qui sont sortis
+    for lemming in lemmings_a_supprimer:
+        lemmingsLIST.remove(lemming)
     
     # ETAPE 3 : affichage des lemmings
+    
+    # Afficher la porte de sortie en arrière-plan
+    screen.blit(sortie_sprite, (sortie_x, sortie_y))
     
     for onelemming in lemmingsLIST:
         xx = onelemming['x']
@@ -225,6 +334,21 @@ while not done:
             dead_frame = min(onelemming['deadcount'] - 1, len(mort) - 1)
             if dead_frame >= 0 and dead_frame < len(mort):
                 screen.blit(mort[dead_frame],(xx,yy))
+        if ( state == EtatStop ):
+            # Affiche le sprite de blocage (première frame)
+            if len(stop) > 0:
+                sprite = stop[0]
+                if onelemming['flipped']:
+                    sprite = pygame.transform.flip(sprite, True, False)
+                screen.blit(sprite,(xx,yy))
+        if ( state == EtatCreuse ):
+            # Affiche le sprite de creusage (animation)
+            if len(creuse) > 0:
+                sprite_index = time % len(creuse)
+                sprite = creuse[sprite_index]
+                if onelemming['flipped']:
+                    sprite = pygame.transform.flip(sprite, True, False)
+                screen.blit(sprite,(xx,yy))
     
     # ETAPE 4 : affichage des lampes d'aptitudes
     lamp_size = 8
