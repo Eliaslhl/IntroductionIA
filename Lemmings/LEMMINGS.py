@@ -2,8 +2,7 @@ import pygame
 import numpy as np
 import os, inspect
 import pygame.surfarray as surfarray
- 
-#recherche du répertoire de travail
+
 scriptPATH = os.path.abspath(inspect.getsourcefile(lambda:0)) # compatible interactive Python Shell
 scriptDIR  = os.path.dirname(scriptPATH)
 assets = os.path.join(scriptDIR,"data")
@@ -21,7 +20,6 @@ def ChargeSerieSprites(id):
       if ( test != (255,0,0,255) ):
          sprite.append( spr )
    return sprite
-
 
 
 ###################################################################################
@@ -52,7 +50,7 @@ EtatFloater = 'EtatFloater'
 EtatClimber = 'EtatClimber'
 EtatBasher = 'EtatBasher'
 
-# Définition des icônes d'aptitudes (rectangles pour la détection de clic)
+# Définition des icônes d'aptitudes
 aptitudes = {
     'Stopper': pygame.Rect(190, 359, 40, 30),
     'Creuser': pygame.Rect(546, 376, 40, 30),
@@ -64,8 +62,7 @@ aptitudes = {
 # Aptitude sélectionnée
 aptitude_selectionnee = None
 
-# liste des lemmins en cours de jeu
-
+# liste des lemmings en cours de jeu
 lemmingsLIST = []
 compteur_creation = 0   
 
@@ -82,39 +79,39 @@ basher = ChargeSerieSprites(6)
 
 # Chargement du sprite de sortie
 sortie_sprite_original = pygame.image.load(os.path.join(assets, "sortie.png"))
-# Redimensionner la sortie à 40x40 pixels
+# Redimensionne la sortie à 40x40 pixels
 sortie_sprite = pygame.transform.scale(sortie_sprite_original, (40, 40))
 
-# Position de la porte de sortie (ajustée pour être bien visible et accessible)
+# Position de la porte de sortie
 sortie_x = 680
 sortie_y = 280
 
 pygame.mouse.set_visible(1)
 
 while not done:
-    event = pygame.event.Event(pygame.USEREVENT)    # Remise à zero de la variable event
+    event = pygame.event.Event(pygame.USEREVENT)
 
     time = int( pygame.time.get_ticks() / 100 )
-    
-    # draw background
+
+    # background
     screen.blit(fond,(0,0))
     
-    # creation des lemmings : 1 lemming toutes les 1,@  5 secondes
+    # creation des lemmings
     if (  (compteur_creation < 15 ) and ( (time+compteur_creation) % 15 == 0) ):
         compteur_creation += 1
         new_lemming = {}
         new_lemming['x']  = 250
         new_lemming['y']  = 100
         new_lemming['vx'] = -1
-        new_lemming['direction'] = -1  # -1 = gauche, +1 = droite
+        new_lemming['direction'] = -1  # à gauche
         new_lemming['flipped'] = False  # True = retourné
         new_lemming['etat'] = EtatChute
         new_lemming['fallcount'] = 0
         new_lemming['Decal'] = np.random.randint(0, len(marche))
         new_lemming['deadcount'] = 0
         new_lemming['creuse_timer'] = 0  # Compteur pour le creusage (toutes les 2s)
-        new_lemming['floater_active'] = False  # Le parachute est-il actif?
-        new_lemming['climber_active'] = False  # Le grimpeur est-il actif?
+        new_lemming['floater_active'] = False  # Parachute actif?
+        new_lemming['climber_active'] = False  # Grimpeur actif?
         new_lemming['basher_timer'] = 0  # Compteur pour le basher
         new_lemming['basher_pending'] = False  # Basher sélectionné mais pas encore contre un mur
         new_lemming['basher_started'] = False  # Le basher a réellement commencé à creuser
@@ -122,10 +119,10 @@ while not done:
         lemmingsLIST.append(new_lemming)
 
     # gestion des évènements
-    for event in pygame.event.get():  # User did something
+    for event in pygame.event.get():
         
-        if event.type == pygame.QUIT:  # If user clicked close
-            done = True  # Flag that we are done so we exit this loop
+        if event.type == pygame.QUIT:
+            done = True 
         
         if event.type == pygame.MOUSEBUTTONDOWN:
             pos = pygame.mouse.get_pos()
@@ -143,7 +140,7 @@ while not done:
             
             # Si clic en dehors des icônes
             if not clic_sur_icone:
-                # Vérifier si on a cliqué sur un lemming
+                # Vérifie si on a cliqué sur un lemming
                 lemming_clique = None
                 for onelemming in lemmingsLIST:
                     # Hitbox du lemming (30x30 pixels)
@@ -152,7 +149,7 @@ while not done:
                         lemming_clique = onelemming
                         break
                 
-                # Appliquer l'aptitude au lemming cliqué
+                # Applique l'aptitude au lemming cliqué
                 if lemming_clique:
                     if aptitude_selectionnee == 'Stopper':
                         if lemming_clique['etat'] == EtatMarche:
@@ -170,7 +167,7 @@ while not done:
                         print("Grimpeur activé!")
                     elif aptitude_selectionnee == 'Basher':
                         if lemming_clique['etat'] == EtatMarche:
-                            # On arme le basher: il démarrera seulement quand le lemming touche un mur
+                            # On arme le basher: il démarrera quand le lemming touche un mur
                             lemming_clique['basher_pending'] = True
                             lemming_clique['basher_started'] = False
                             lemming_clique['basher_timer'] = 0
@@ -183,7 +180,7 @@ while not done:
     # ETAPE 1 : gestion des transitions
     for onelemming in lemmingsLIST:
         if ( onelemming['etat'] == EtatChute ):
-            # Vérifier 3 points en dessous du sprite pour détecter une collision
+            # Vérifie 3 points en dessous du sprite pour détecter une collision
             points_check = [
                 (onelemming['x'] + 10, onelemming['y'] + 30),
                 (onelemming['x'] + 15, onelemming['y'] + 30),
@@ -202,10 +199,10 @@ while not done:
                 # Si le lemming a le floater actif, il ne prend pas de dégâts
                 if onelemming['floater_active']:
                     onelemming['etat'] = EtatMarche
-                    onelemming['floater_active'] = False  # Désactiver le floater
+                    onelemming['floater_active'] = False  # Désactive le floater
                     print("Lemming atterri avec parachute!")
                 # Si le lemming a chuté d'une hauteur mortelle
-                elif onelemming['fallcount'] > 160:
+                elif onelemming['fallcount'] > 160: # à redéfinir
                     onelemming['etat'] = EtatDead
                 else:
                     onelemming['etat'] = EtatMarche
@@ -231,7 +228,7 @@ while not done:
                 onelemming['etat'] = EtatChute
                 onelemming['fallcount'] = 0
             
-            # Vérifier collision avec mur devant
+            # Vérifie collision avec mur devant
             direction = onelemming['direction']
             # Points à vérifier devant le lemming
             wall_check_x = onelemming['x'] + (direction * 3)
@@ -251,8 +248,7 @@ while not done:
             
             # Si collision avec mur, inverse la direction et le sprite
             if collision_mur:
-                # Vérifier si le lemming est dans un tunnel (noir sous les pieds)
-                # Si c'est le cas, ignorer la collision mur
+                # Vérifie si le lemming est dans un tunnel
                 in_tunnel = False
                 tunnel_check_points = [
                     (int(onelemming['x']) + 10, int(onelemming['y']) + 30),
@@ -266,12 +262,12 @@ while not done:
                             in_tunnel = True
                             break
                 
-                # Si on est dans un tunnel, ignorer la collision mur (continuer tout droit)
+                # Si on est dans un tunnel, ignore la collision mur
                 if in_tunnel:
-                    pass  # Ignore la collision, on continue
-                # Si on est en Basher, on ignore la collision (on creuse le mur!)
+                    pass
+                # Si on est en Basher, on ignore la collision
                 elif onelemming['etat'] == EtatBasher:
-                    pass  # Ignore la collision, on continue à creuser
+                    pass
                 # Si le basher est "armé" et qu'on touche un mur en marchant, on démarre le basher
                 elif onelemming.get('basher_pending', False):
                     onelemming['etat'] = EtatBasher
@@ -285,7 +281,6 @@ while not done:
                     print("Lemming grimpe le mur!")
                 else:
                     # Si on vient juste de finir un basher, on évite un rebond instantané
-                    # (sinon ça donne un aller-retour sur place)
                     if onelemming.get('basher_exit_cooldown', 0) > 0:
                         pass
                     else:
@@ -309,7 +304,7 @@ while not done:
         
         # Transition de Climber vers Marche quand il n'y a plus de mur
         if ( onelemming['etat'] == EtatClimber ):
-            # Vérifier si le mur continue AU-DESSUS ET sur le CÔTÉ du lemming
+            # Vérifie si le mur continue AU-DESSUS ET sur le CÔTÉ du lemming
             direction = onelemming['direction']
             wall_check_x = onelemming['x'] + (direction * 3)
             # Points à vérifier au-dessus du lemming
@@ -327,9 +322,9 @@ while not done:
                         collision_mur_climb = True
                         break
             
-            # Si pas de mur au-dessus, on regarde si on peut marcher devant (et on retourne à Marche)
+            # Si pas de mur au-dessus, on regarde si on peut marcher devant
             if not collision_mur_climb:
-                # Vérifier s'il y a du sol devant pour marcher
+                # Vérifie s'il y a du sol devant pour marcher
                 wall_check_points_devant = [
                     (wall_check_x, onelemming['y'] + 5),
                     (wall_check_x, onelemming['y'] + 15),
@@ -347,14 +342,13 @@ while not done:
                     onelemming['etat'] = EtatMarche
                     onelemming['climber_active'] = False
                 else:
-                    # Pas de sol devant = c'est un vide, on tombe
                     onelemming['etat'] = EtatChute
                     onelemming['fallcount'] = 0
                     onelemming['climber_active'] = False
         
         # Transition de Creuse vers Marche quand le sol est dégagé
         if ( onelemming['etat'] == EtatCreuse ):
-            # Vérifier 3 points en dessous du sprite
+            # Vérifie 3 points en dessous du sprite
             points_check = [
                 (onelemming['x'] + 10, onelemming['y'] + 30),
                 (onelemming['x'] + 15, onelemming['y'] + 30),
@@ -372,19 +366,16 @@ while not done:
             # Si le sol est dégagé, retourne à Marche
             if no_support:
                 onelemming['etat'] = EtatMarche
-        
-        # (Basher) Note: la condition d'arrêt est gérée en ETAPE 2 (actions)
-        # pour éviter d'annuler le basher dès la frame d'activation.
 
     # ETAPE 2 : gestion des actions
-
+    
     for onelemming in lemmingsLIST:
         # Cooldown qui empêche le rebond sur mur juste après un basher
         if onelemming.get('basher_exit_cooldown', 0) > 0:
             onelemming['basher_exit_cooldown'] -= 1
 
         if ( onelemming['etat'] == EtatChute ):
-            # Si le floater est actif, le lemming descend lentement (1 pixel/frame)
+            # Si le floater est actif, le lemming descend lentement
             if onelemming['floater_active']:
                 onelemming['y'] += 1
                 onelemming['fallcount'] += 1
@@ -404,7 +395,7 @@ while not done:
             onelemming['y'] -= 2  # Monte de 2 pixels par frame
             onelemming['Decal'] += 1  # Animation de grimpe
         if ( onelemming['etat'] == EtatCreuse ):
-            # Creuser : creuse le terrain toutes les 2 secondes (20 ticks)
+            # Creuser : creuse le terrain toutes les 2 secondes
             onelemming['creuse_timer'] += 1
             if onelemming['creuse_timer'] >= 20:
                 onelemming['creuse_timer'] = 0
@@ -415,14 +406,13 @@ while not done:
                 onelemming['y'] += 1
         if ( onelemming['etat'] == EtatBasher ):
             # Basher : creuse devant lui horizontalement dès la première frame
-            # ET continue à avancer en même temps
             onelemming['basher_timer'] += 1
             onelemming['x'] += onelemming['direction'] * 3  # Avance
             
             if onelemming['basher_timer'] > 0:  # Creuse dès la première frame
-                # Creuse 20 pixels devant le lemming (dans sa direction)
+                # Creuse 20 pixels devant le lemming
                 direction = onelemming['direction']
-                
+
                 # AVANT de creuser, vérifie s'il y a du terrain à creuser devant
                 check_x = int(onelemming['x']) + (direction * 20)
                 has_terrain_ahead = False
@@ -435,7 +425,7 @@ while not done:
                 
                 # Ne creuse que s'il y a du terrain devant
                 if has_terrain_ahead:
-                    # Point de départ collé au mur (évite un "espace" avant le tunnel)
+                    # Point de départ collé au mur
                     base_x = int(onelemming['x']) + (direction * -3)
                     # Tunnel au niveau des pieds du lemming
                     base_y = int(onelemming['y']) + 15
@@ -443,16 +433,12 @@ while not done:
                     # Creuse 20 pixels horizontalement devant lui à sa hauteur
                     for px in range(30):
                         x_pos = base_x + (direction * px)
-                        # Tunnel plus grand, surtout vers le haut ET vers le bas
+                        # Tunnel plus grand
                         for py in range(30):
                             y_pos = base_y + py - 8
                             if 0 <= x_pos < WINDOW_SIZE[0] and 0 <= y_pos < WINDOW_SIZE[1]:
                                 fond.set_at((x_pos, y_pos), (0, 0, 0))
 
-            # Stop condition: s'il n'y a plus rien à creuser juste devant (déjà noir),
-            # on revient à Marche. On attend quelques frames après activation
-            # pour éviter un arrêt immédiat si le lemming était déjà dans un trou.
-            # On ne stoppe que si on a réellement démarré le basher contre un mur
             if onelemming.get('basher_started', False) and onelemming['basher_timer'] > 5:
                 direction = onelemming['direction']
                 check_x = int(onelemming['x']) + (direction * 16)
@@ -471,14 +457,14 @@ while not done:
                     onelemming['etat'] = EtatMarche
                     onelemming['basher_timer'] = 0
                     onelemming['basher_started'] = False
-                    # Petit délai: évite le rebond sur le mur la frame où on sort du basher
+                    # évite le rebond sur le mur la frame où on sort du basher
                     onelemming['basher_exit_cooldown'] = 6
 
-            # Garde-fou (évite basher infini)
+            # évite basher infini
             if onelemming['basher_timer'] > 250:
                 onelemming['etat'] = EtatMarche
                 onelemming['basher_timer'] = 0
-            onelemming['Decal'] += 1  # Animation de bash
+            onelemming['Decal'] += 1
     
     # Détection de collision avec la porte de sortie
     lemmings_a_supprimer = []
@@ -501,13 +487,13 @@ while not done:
             lemmings_a_supprimer.append(onelemming)
             print("Lemming sauvé!")
     
-    # Supprimer les lemmings qui sont sortis
+    # Supprime les lemmings qui sont sortis
     for lemming in lemmings_a_supprimer:
         lemmingsLIST.remove(lemming)
     
     # ETAPE 3 : affichage des lemmings
     
-    # Afficher la porte de sortie en arrière-plan
+    # Affiche la porte de sortie en arrière-plan
     screen.blit(sortie_sprite, (sortie_x, sortie_y))
     
     for onelemming in lemmingsLIST:
@@ -546,7 +532,7 @@ while not done:
                     sprite = pygame.transform.flip(sprite, True, False)
                 screen.blit(sprite,(xx,yy))
         if ( state == EtatCreuse ):
-            # Affiche le sprite de creusage (animation)
+            # Affiche le sprite de creusage
             if len(creuse) > 0:
                 sprite_index = time % len(creuse)
                 sprite = creuse[sprite_index]
@@ -554,7 +540,7 @@ while not done:
                     sprite = pygame.transform.flip(sprite, True, False)
                 screen.blit(sprite,(xx,yy))
         if ( state == EtatClimber ):
-            # Affiche le sprite de grimpage (animation)
+            # Affiche le sprite de grimpage
             if len(climber) > 0:
                 sprite_index = time % len(climber)
                 sprite = climber[sprite_index]
@@ -562,7 +548,7 @@ while not done:
                     sprite = pygame.transform.flip(sprite, True, False)
                 screen.blit(sprite,(xx,yy))
         if ( state == EtatBasher ):
-            # Affiche le sprite de basher (animation)
+            # Affiche le sprite de basher
             if len(basher) > 0:
                 sprite_index = time % len(basher)
                 sprite = basher[sprite_index]
@@ -572,7 +558,7 @@ while not done:
     
     # ETAPE 4 : affichage des lampes d'aptitudes
     lamp_size = 8
-    lamp_y_fixed = 340  # Hauteur fixe pour aligner toutes les lampes
+    lamp_y_fixed = 340 
     
     # Positions X spécifiques pour chaque lampe
     lamp_positions = {
@@ -580,7 +566,7 @@ while not done:
         'Creuser': 530 + 20,
         'Floater': 338 + 20,
         'Climber': 290 + 20,
-        'Basher': 500 + 20
+        'Basher': 480 + 20
     }
     
     for nom_aptitude in aptitudes.keys():
@@ -592,7 +578,7 @@ while not done:
         else:
             couleur_lampe = (100, 100, 100)  # Gris
         
-        # Dessiner la lampe (cercle)
+        # Dessine la lampe (cercle)
         pygame.draw.circle(screen, couleur_lampe, (lamp_x, lamp_y_fixed), lamp_size)
         pygame.draw.circle(screen, (200, 200, 200), (lamp_x, lamp_y_fixed), lamp_size, 1)  # Bordure
 
