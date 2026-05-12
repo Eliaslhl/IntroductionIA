@@ -427,8 +427,8 @@ while not done:
                 if has_terrain_ahead:
                     # Point de départ collé au mur
                     base_x = int(onelemming['x']) + (direction * -3)
-                    # Tunnel au niveau des pieds du lemming
-                    base_y = int(onelemming['y']) + 15
+                    # Tunnel remonté un peu
+                    base_y = int(onelemming['y']) + 8
                     
                     # Creuse 20 pixels horizontalement devant lui à sa hauteur
                     for px in range(30):
